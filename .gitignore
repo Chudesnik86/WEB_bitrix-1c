@@ -2,6 +2,7 @@
 /upload
 /local/vendor
 /local/classes/General/Constants.php
+/local/temp_downloads
 /html
 /frontend
 .remote-sync.json

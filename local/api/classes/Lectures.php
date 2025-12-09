@@ -13,11 +13,49 @@ class Lectures
     private static function getFileUrl($fileId)
     {
         if (!$fileId) return null;
-        $file = \CFile::GetFileArray($fileId);
-        return $file ? 'https://' . $_SERVER['HTTP_HOST'] . $file['SRC'] : null;
+        // Возвращаем URL для скачивания через временную папку через прокси
+        // Frontend работает на localhost:3000, поэтому используем относительный путь через прокси
+        return '/download/local/api/download.php?type=lecture&fileId=' . $fileId;
     }
 
-    private static function process($item)
+    /**
+     * Десериализует текстовое поле, если оно хранится в сериализованном виде
+     * В Bitrix HTML-свойства хранятся как: a:2:{s:4:"TEXT";s:2:"С";s:4:"TYPE";s:4:"TEXT";}
+     * @param mixed $value
+     * @return string
+     */
+    private static function unserializeText($value)
+    {
+        if (empty($value) && $value !== '0') {
+            return '';
+        }
+
+        // Если это уже массив с ключом TEXT, просто возвращаем текст
+        if (is_array($value) && isset($value['TEXT'])) {
+            return (string)$value['TEXT'];
+        }
+
+        // Если это не строка, преобразуем в строку
+        if (!is_string($value)) {
+            $value = (string)$value;
+        }
+
+        // Проверяем, является ли строка сериализованными данными
+        // В Bitrix HTML-свойства начинаются с 'a:' (массив)
+        if (is_string($value) && strlen($value) > 0 && strpos($value, 'a:') === 0) {
+            $unserialized = @unserialize($value);
+            if ($unserialized !== false && is_array($unserialized)) {
+                // Стандартный формат Bitrix: массив с ключом TEXT
+                if (isset($unserialized['TEXT'])) {
+                    return (string)$unserialized['TEXT'];
+                }
+            }
+        }
+
+        return $value;
+    }
+
+    private static function process($item, $isAvailableByPrevious = true)
     {
         $dateAvailable = null;
 
@@ -35,15 +73,22 @@ class Lectures
         }
 
         $now = new \Bitrix\Main\Type\DateTime();
-        $isAvailable = !$dateAvailable || $now >= $dateAvailable;
+        $isAvailableByDate = !$dateAvailable || $now >= $dateAvailable;
+        
+        // Лекция доступна только если доступна по дате И по предыдущим лекциям
+        $isAvailable = $isAvailableByDate && $isAvailableByPrevious;
 
+        // Обрабатываем CONTENT - может быть сериализованным
+        $content = $item['CONTENT'] ?? '';
+        $content = self::unserializeText($content);
+        
         return [
             'id'              => (int)$item['ID'],
             'name'            => trim($item['NAME']),
             'code'            => $item['CODE'] ?? '',
             'courseId'        => (int)$item['COURSE_ID'],
             'sort'            => (int)($item['SORT_ORDER'] ?: 500),
-            'content'         => $item['CONTENT'] ?? '',
+            'content'         => $content,
             'file'            => self::getFileUrl($item['FILE_ID']),
             'dateAvailable'   => $dateAvailable?->toString(),
             'requirePrevious' => $item['REQUIRE_PREV'] === 'Y',
@@ -75,6 +120,8 @@ class Lectures
             return ['error' => 'courseId required'];
         }
 
+        $userId = (int)$USER->GetID();
+
         $db = \Legacy\Iblock\LecturesTable::query()
             ->withSelect()
             ->where('COURSE_ID', $courseId)
@@ -83,8 +130,61 @@ class Lectures
             ->exec();
 
         $items = [];
+        $previousLecturesCompleted = true; // Первая лекция всегда доступна
+        
         while ($item = $db->fetch()) {
-            $items[] = self::process($item);
+            $lectureId = (int)$item['ID'];
+            $isAvailableByPrevious = $previousLecturesCompleted;
+            
+            // Если предыдущие лекции не завершены, текущая недоступна
+            if (!$previousLecturesCompleted) {
+                $isAvailableByPrevious = false;
+            } else {
+                // Проверяем, все ли задания текущей лекции выполнены
+                $tasks = \Legacy\Iblock\TasksTable::query()
+                    ->withSelect()
+                    ->where('LECTURE_ID', $lectureId)
+                    ->exec();
+                
+                $allTasksCompleted = true;
+                $hasTasks = false;
+                
+                while ($task = $tasks->fetch()) {
+                    $hasTasks = true;
+                    $taskId = (int)$task['ID'];
+                    
+                    // Проверяем, есть ли ответ студента на это задание
+                    $answer = \Legacy\Iblock\TaskAnswersTable::query()
+                        ->withSelect()
+                        ->where('TASK_ID', $taskId)
+                        ->where('USER_ID', $userId)
+                        ->exec()
+                        ->fetch();
+                    
+                    if (!$answer) {
+                        // Нет ответа на задание - лекция не завершена
+                        $allTasksCompleted = false;
+                        break;
+                    }
+                }
+                
+                // Если в лекции нет заданий, считаем её завершенной
+                if (!$hasTasks) {
+                    $allTasksCompleted = true;
+                }
+                
+                // Если не все задания выполнены, текущая и следующие лекции недоступны
+                if (!$allTasksCompleted) {
+                    $isAvailableByPrevious = false;
+                    $previousLecturesCompleted = false;
+                } else {
+                    // Все задания выполнены - следующая лекция будет доступна
+                    $previousLecturesCompleted = true;
+                }
+            }
+            
+            $processed = self::process($item, $isAvailableByPrevious);
+            $items[] = $processed;
         }
 
         return [

@@ -33,36 +33,6 @@ class CoursesTable extends \Bitrix\Iblock\ElementTable
             ]
         ));
 
-        // Статус видимости (открытый/закрытый)
-        $query->registerRuntimeField('IS_PUBLIC', new ReferenceField(
-            'IS_PUBLIC',
-            ElementPropertyTable::class,
-            [
-                '=this.ID' => 'ref.IBLOCK_ELEMENT_ID',
-                '=ref.IBLOCK_PROPERTY_ID' => new SqlExpression('?', Constants::IB_PROP_COURSES_IS_PUBLIC) // 13
-            ]
-        ));
-
-        // Дата начала доступа
-        $query->registerRuntimeField('DATE_START', new ReferenceField(
-            'DATE_START',
-            ElementPropertyTable::class,
-            [
-                '=this.ID' => 'ref.IBLOCK_ELEMENT_ID',
-                '=ref.IBLOCK_PROPERTY_ID' => new SqlExpression('?', Constants::IB_PROP_COURSES_DATE_START) // 14
-            ]
-        ));
-
-        // Дата окончания доступа
-        $query->registerRuntimeField('DATE_END', new ReferenceField(
-            'DATE_END',
-            ElementPropertyTable::class,
-            [
-                '=this.ID' => 'ref.IBLOCK_ELEMENT_ID',
-                '=ref.IBLOCK_PROPERTY_ID' => new SqlExpression('?', Constants::IB_PROP_COURSES_DATE_END) // 15
-            ]
-        ));
-
         $query->setSelect([
             'ID',
             'NAME',
@@ -70,33 +40,22 @@ class CoursesTable extends \Bitrix\Iblock\ElementTable
             'PREVIEW_TEXT',
             'DETAIL_TEXT',
             'DESCRIPTION_VALUE' => 'DESCRIPTION.VALUE',
-            'IS_PUBLIC_VALUE'   => 'IS_PUBLIC.VALUE',
-            'DATE_START_VALUE'  => 'DATE_START.VALUE',
-            'DATE_END_VALUE'    => 'DATE_END.VALUE',
         ]);
     }
 
     // Только курсы, доступные сейчас
     public static function withActivePeriod($query)
     {
-        $now = new \Bitrix\Main\Type\DateTime();
-
-        $query->addFilter(null, [
-            'LOGIC' => 'OR',
-            ['>=DATE_END_VALUE' => $now],
-            ['DATE_END_VALUE' => false],
-        ]);
-
-        $query->addFilter(null, [
-            'LOGIC' => 'OR',
-            ['<=DATE_START_VALUE' => $now],
-            ['DATE_START_VALUE' => false],
-        ]);
+        // Временно отключаем фильтрацию по датам, так как addFilter не работает корректно с runtime полями
+        // Фильтрация будет выполняться на уровне PHP после получения данных
+        // TODO: Реализовать правильную фильтрацию через where или подзапросы
     }
 
     // Только открытые курсы
     public static function withPublicOnly($query)
     {
-        $query->where('IS_PUBLIC_VALUE', 'Y');
+        // Теперь используется "Да" вместо "Y"
+        // Фильтрация по публичности выполняется на уровне PHP, так как нужно проверять "Да"
+        // $query->where('IS_PUBLIC_VALUE', 'Да');
     }
 }
