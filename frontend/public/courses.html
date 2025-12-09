@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои курсы</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/student.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <a href="/courses" class="logo" id="user-name">Студент</a>
+            <a href="/login" id="logout-link" style="display: none;">Выйти</a>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <h1>Мои курсы</h1>
+
+            <div id="courses-loading" class="loading">
+                <div class="skeleton skeleton-title"></div>
+                <div class="skeleton skeleton-text"></div>
+                <div class="skeleton skeleton-text" style="width: 80%;"></div>
+            </div>
+
+            <div id="courses-error" class="error" style="display: none;"></div>
+            <div id="courses-list" class="courses-list"></div>
+        </div>
+    </main>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/courses.js"></script>
+    <script>
+        // Функция для обновления имени пользователя в хедере
+        function updateUserName(user) {
+            const userNameEl = document.getElementById('user-name');
+            if (userNameEl && user) {
+                let fullName = '';
+                if (user.firstName && user.lastName) {
+                    fullName = `${user.firstName} ${user.lastName}`.trim();
+                } else if (user.firstName) {
+                    fullName = user.firstName;
+                } else if (user.lastName) {
+                    fullName = user.lastName;
+                } else if (user.name) {
+                    fullName = user.name;
+                }
+                
+                if (fullName) {
+                    userNameEl.textContent = fullName;
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const user = await api.getUser();
+                if (user && !user.error) {
+                    // Обновляем имя пользователя в хедере
+                    updateUserName(user);
+                    
+                    document.getElementById('logout-link').style.display = 'block';
+                    document.getElementById('logout-link').addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        await api.logout();
+                        window.location.href = '/login';
+                    });
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

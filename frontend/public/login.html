@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в систему</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/student.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-container {
+            background: white;
+            padding: 48px 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 420px;
+            animation: fadeIn 0.6s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        h1 {
+            text-align: center;
+            color: #1e293b;
+            margin-bottom: 32px;
+            font-weight: 700;
+            font-size: 28px;
+        }
+        .form-group label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+        .form-control {
+            transition: all 0.3s ease;
+        }
+        .btn-login {
+            background: #3b82f6;
+            padding: 14px;
+            font-weight: 600;
+            margin-top: 16px;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            font-size: 16px;
+        }
+        .btn-login:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        .error-message, .success-message {
+            border-radius: 8px;
+            font-weight: 500;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>Студенческий портал</h1>
+        
+        <div id="error-message" class="error-message"></div>
+        <div id="success-message" class="success-message"></div>
+
+        <form id="login-form" class="login-form">
+            <div class="form-group">
+                <label for="login">Логин</label>
+                <input type="text" id="login" name="login" class="form-control" required autocomplete="username">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Пароль</label>
+                <input type="password" id="password" name="password" class="form-control" required autocomplete="current-password">
+            </div>
+
+            <button type="submit" id="login-btn" class="btn-login">Войти</button>
+        </form>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/login.js"></script>
+</body>
+</html>
